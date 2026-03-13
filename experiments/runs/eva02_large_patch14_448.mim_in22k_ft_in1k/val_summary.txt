@@ -1,0 +1,7 @@
+Validation summary
+==================
+Items evaluated: 50
+Average Loss: 541.760620
+MAE (Roughness): 16.927563
+R2 (Roughness): -0.027236
+RMSE: 22.288313
