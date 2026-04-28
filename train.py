@@ -7,8 +7,8 @@ except Exception:
 import torch
 from torchvision import transforms
 
-from model import MultiBackBoneRegressor
-import data
+from src.model.model import MultiBackBoneRegressor
+import src.utils.data as data
 from engine import FeatureCacheManager, Trainer
 
 def parse_args():

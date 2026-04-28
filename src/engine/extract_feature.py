@@ -3,9 +3,9 @@ from pathlib import Path
 import yaml
 import torch
 from torchvision import transforms
-from model import MultiBackBoneRegressor
+from src.model.model import MultiBackBoneRegressor
 from engine import FeatureCacheManager
-import data
+import src.utils.data as data
 
 
 def run_extraction(config_path='config.yaml', splits=('train','valid'), force_cpu=False):

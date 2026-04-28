@@ -7,8 +7,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, r2_score
 import csv
-from model import MultiBackBoneRegressor
-import data
+from src.model.model import MultiBackBoneRegressor
+import src.utils.data as data
 from engine import CachedFeatureDataset
 import argparse
 try:

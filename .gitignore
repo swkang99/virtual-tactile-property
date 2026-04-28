@@ -203,5 +203,5 @@ $RECYCLE.BIN/
 
 # Data directory
 data/
-checkpoints/
+experiments/
 results/
