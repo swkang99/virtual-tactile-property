@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from src.model.model import MultiBackBoneRegressor
 import src.utils.data as data
-from engine import FeatureCacheManager, Trainer
+from src.engine import FeatureCacheManager, Trainer
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train regressor with optional feature cache handling')
