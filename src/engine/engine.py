@@ -23,7 +23,7 @@ class CachedFeatureDataset(Dataset):
     def __getitem__(self, idx):
         sid = self.ids[idx]
         feat_path = self.split_cache / f"{sid}.pt"
-        feat = torch.load(str(feat_path))
+        feat = torch.load(str(feat_path), weights_only=False).float()
         target = torch.tensor(self.df.iloc[idx]['roughness'], dtype=torch.float32)
         return feat, target
 
