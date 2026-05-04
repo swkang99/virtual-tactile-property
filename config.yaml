@@ -1,5 +1,5 @@
 # Default configuration for training
-feature_extractor: eva_giant_patch14_560.m30m_ft_in22k_in1k
+feature_extractor: nfnet_l0
 batch_size: 8
 num_epochs: 100
 image_size: 560

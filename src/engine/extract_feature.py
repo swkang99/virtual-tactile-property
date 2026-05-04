@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import yaml
 import torch
+import pandas as pd
 from torchvision import transforms
 from src.model.model import MultiBackBoneRegressor
 from engine import FeatureCacheManager
@@ -37,7 +38,7 @@ def run_extraction(config_path='config.yaml', splits=('train','valid'), force_cp
 
     # load dataframes to iterate
     df_train, df_valid, df_test = data.build_dataframe()
-    mapping = {'train': df_train, 'valid': df_valid}
+    mapping = {'train': df_train, 'valid': df_valid, 'full': pd.concat([df_train, df_valid], ignore_index=True)}
 
     for split in splits:
         if split not in mapping:
