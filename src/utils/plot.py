@@ -13,21 +13,12 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import src.utils.data as data
-try:
-    import yaml
-except Exception:
-    yaml = None
+from src.data.dataset import build_dataframe
+import yaml
+config_path = Path(__file__).resolve().parent.parent / "config.yaml"
 
-
-def load_config(path='config.yaml'):
-    p = Path(path)
-    if not p.exists():
-        return {}
-    if yaml is None:
-        raise SystemExit('PyYAML required to read config.yaml (pip install pyyaml)')
-    with open(p, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f) or {}
+with open(config_path, "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
 
 
 def read_training_log(csv_path: Path):
@@ -180,7 +171,7 @@ def read_loocv_results(csv_path: Path):
 
 
 def find_image_path(image_id: str):
-    df_train, df_valid = data.build_dataframe()
+    df_train, df_valid = build_dataframe()
     full_df = pd.concat([df_train, df_valid], ignore_index=True)
     for _, row in full_df.iterrows():
         try:
@@ -310,8 +301,7 @@ def main():
     parser.add_argument('--results-path', type=str, default='loocv_results.csv', help='Path to loocv_results.csv')
     args = parser.parse_args()
 
-    cfg = load_config(args.config)
-    extractor = args.extractor or cfg.get('feature_extractor')
+    extractor = args.extractor or config.get('feature_extractor')
     if not extractor:
         # try to infer from checkpoints directory
         ck = Path('checkpoints')
