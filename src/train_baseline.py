@@ -12,6 +12,8 @@ import yaml
 import time
 import json
 from tqdm import tqdm
+from skimage.transform import resize
+import cv2
 
 from src.data.dataset import build_original_dataframe
 from src.model.feature.glcm import gray_level_co_occurrence_matrix
@@ -63,19 +65,23 @@ class FeatureDataset(Dataset):
     def __getitem__(self, idx):
         return self.features[idx], self.targets[idx]
 
-def extract_single_image_features(img_pil, transform, resnet50, device):
-    img_np = np.array(img_pil)
+def extract_single_image_features(img_path, transform, resnet50, device):
+    texture_img = Image.open(img_path).convert('L') # mode L: Grayscale
+    texture_img_np = np.array(texture_img)
+    texture_img_resized = resize(texture_img_np, (1568, 1568), preserve_range=False, anti_aliasing=True)
     
     glcm_start = time.perf_counter()
-    glcm_feat = extract_glcm_features(img_np)
+    glcm_feat = extract_glcm_features(texture_img_resized)
     glcm_time = time.perf_counter() - glcm_start
 
     lbp_start = time.perf_counter()
-    lbp_feat = extract_lbp_features(img_np)
+    lbp_feat = extract_lbp_features(texture_img_resized)
     lbp_time = time.perf_counter() - lbp_start
 
     resnet_start = time.perf_counter()
-    img_tensor = transform(img_pil)
+    img_tensor = transform(texture_img)
+    if img_tensor.shape[0] == 1:
+        img_tensor = img_tensor.repeat(3, 1, 1) # if image is grayscale, repeat to make 3 channel
     resnet_feat = extract_resnet50_features(img_tensor, resnet50, device)
     resnet_time = time.perf_counter() - resnet_start
 
@@ -91,13 +97,14 @@ def build_all_features(full_df, transform, resnet50, device):
     resnet_times = []
 
     for _, row in tqdm(full_df.iterrows(), total=len(full_df), desc="Precompute features", unit="sample"):
-        texture_path = row['texture_path']
-        texture_img = Image.open(texture_path).convert('RGB')
-        normal_img = Image.open(row['normal_path']).convert('RGB')
-        height_img = Image.open(row['height_path']).convert('RGB')
+        # texture_img = cv2.imread(row['texture_path'], cv2.IMREAD_GRAYSCALE)
+        # texture_img_resized = cv2.resize(texture_img, dsize=(1568, 1568))
+        
+        # height_img = Image.open(row['height_path']).convert('L')
+        # normal_img = Image.open(row['normal_path']).convert('RGB')
         gt = float(row['roughness'])
  
-        texture_feat, texture_glcm_time, texture_lbp_time, texture_resnet_time = extract_single_image_features(texture_img, transform, resnet50, device)
+        texture_feat, texture_glcm_time, texture_lbp_time, texture_resnet_time = extract_single_image_features(row['texture_path'], transform, resnet50, device)
         # normal_feat, normal_glcm_time, normal_lbp_time, normal_resnet_time  = extract_single_image_features(normal_img, transform, resnet50, device)
         # height_feat, height_glcm_time, height_lbp_time, height_resnet_time  = extract_single_image_features(height_img, transform, resnet50, device)
 
@@ -106,7 +113,7 @@ def build_all_features(full_df, transform, resnet50, device):
 
         all_features.append(combined_feat)
         all_targets.append(gt)
-        image_ids.append(str(int(Path(texture_path).stem)))
+        image_ids.append(str(int(Path(row['texture_path']).stem)))
 
         glcm_times.append(texture_glcm_time)
         # glcm_times.append(normal_glcm_time)

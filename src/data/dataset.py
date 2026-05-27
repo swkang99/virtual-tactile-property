@@ -4,7 +4,7 @@ from PIL import Image
 import pandas as pd
 import os
 from pathlib import Path
-from sklearn.model_selection import train_test_split
+from src.data.texture_maps import process_texture
 
 class CustomRegressionDataset(Dataset):
     def __init__(self, df, transform=None):
@@ -69,8 +69,7 @@ def _load_roughness_labels(csv_path):
         roughness = labels_df['roughness'].astype(float).tolist()
         return {str(i + 1): roughness[i] for i in range(len(roughness))}
 
-    first_col = labels_df.columns[0]
-    return {str(i + 1): float(labels_df.iloc[i, 0]) for i in range(len(labels_df))}
+    return {str(i + 1): float(labels_df.iloc[i, 1]) for i in range(len(labels_df))} # second col
 
 
 def _find_image_path(directory, sid, exts):
@@ -82,15 +81,8 @@ def _find_image_path(directory, sid, exts):
 
 
 def build_original_dataframe(base_dir="data/original"):
-    csv_path = os.path.join(base_dir, "adjective_rating_shuffled.csv")
+    csv_path = os.path.join(base_dir, "ParticipantData.csv")
     texture_dir = os.path.join(base_dir, 'texture_image')
-    normal_dir = os.path.join(base_dir, 'normal_map')
-    height_dir = os.path.join(base_dir, 'height_map')
-
-    if not os.path.isdir(texture_dir) or not os.path.isdir(normal_dir) or not os.path.isdir(height_dir):
-        raise FileNotFoundError(
-            f"Expected original data in {base_dir} with texture_image, normal_map, height_map directories"
-        )
 
     label_map = _load_roughness_labels(csv_path)
 
@@ -103,12 +95,8 @@ def build_original_dataframe(base_dir="data/original"):
     rows = []
     for tex_path in texture_files:
         sid = tex_path.stem
-        normal_path = _find_image_path(normal_dir, sid, ['.png', '.jpg', '.JPG'])
-        height_path = _find_image_path(height_dir, sid, ['.png', '.jpg', '.JPG'])
-
-        if normal_path is None or height_path is None:
-            continue
-
+        height_dir, normal_dir = process_texture(tex_path)
+        
         roughness = label_map.get(sid)
         if roughness is None:
             try:
@@ -120,8 +108,8 @@ def build_original_dataframe(base_dir="data/original"):
 
         rows.append({
             'texture_path': str(tex_path),
-            'normal_path': normal_path,
-            'height_path': height_path,
+            'normal_path': normal_dir,
+            'height_path': height_dir,
             'roughness': float(roughness)
         })
 
