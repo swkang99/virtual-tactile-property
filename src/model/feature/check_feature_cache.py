@@ -1,7 +1,7 @@
 from pathlib import Path
 import torch
 import yaml
-from src.model.feature.extract import run_extraction
+from model.feature.extract import run_extraction
 import argparse
 
 

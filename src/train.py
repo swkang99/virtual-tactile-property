@@ -4,9 +4,11 @@ import yaml
 import torch
 from torchvision import transforms
 
-from src.model.prediction.model import MultiBackBoneRegressor
-from src.data.dataset import build_dataframe, CachedFeatureDataset
-from src.model.feature.extract import FeatureCacheManager
+from model.prediction.model import MultiBackBoneRegressor
+from data.dataset import build_dataframe, CachedFeatureDataset
+from model.feature.extract import FeatureCacheManager
+
+from data.dataset import build_original_dataframe
 
 import os
 import time
@@ -154,7 +156,7 @@ def main():
     args = parse_args()
 
     # dataframes
-    df_train, df_valid, df_test = build_dataframe()
+    df_train, df_valid, df_test = build_original_dataframe()#build_dataframe()
     print(f"Dataset sizes: train={len(df_train)}, valid={len(df_valid)}, test={len(df_test)}")
 
     # load config
@@ -190,6 +192,7 @@ def main():
     cache_mgr = FeatureCacheManager(model, transform, cache_root, device)
     trainer = Trainer(model, df_train, df_valid, device, cfg_feature_extractor, cache_root, transform, batch_size=cfg_batch_size, num_epochs=cfg_num_epochs, num_workers=cfg_num_workers)
 
+    '''
     # Ensure cache exists (compute if missing) with respect to flags
     if args.skip_cache:
         if not cache_mgr.cache_exists(cfg_feature_extractor):
@@ -211,6 +214,29 @@ def main():
                 num_workers=cfg_extraction_workers,
                 use_multiprocessing=cfg_extraction_use_mp
             )
+    '''
+
+    # Ensure cache files exist for current train/valid ids
+    if args.skip_cache:
+        print("Skipping cache generation. Existing cache files will be used.")
+    else:
+        print("Ensuring feature cache exists for train split...")
+        cache_mgr.compute_and_cache(
+            df_train, cfg_feature_extractor, 'train',
+            force_cpu=args.force_cpu_cache,
+            batch_size=cfg_extraction_batch,
+            num_workers=cfg_extraction_workers,
+            use_multiprocessing=cfg_extraction_use_mp
+        )
+
+        print("Ensuring feature cache exists for valid split...")
+        cache_mgr.compute_and_cache(
+            df_valid, cfg_feature_extractor, 'valid',
+            force_cpu=args.force_cpu_cache,
+            batch_size=cfg_extraction_batch,
+            num_workers=cfg_extraction_workers,
+            use_multiprocessing=cfg_extraction_use_mp
+        )
 
     # start training (uses cached features)
     trainer.train()
@@ -223,7 +249,7 @@ def main():
         log_file = ck_dir / 'training_log.csv'
         if log_file.exists():
             print('Generating training plots...')
-            plot_script = Path(__file__).parent / 'plot.py'
+            plot_script = Path(__file__) / 'utils' /'plot.py'
             # call plot.py as a separate process to avoid any matplotlib backend issues
             subprocess.run([sys.executable, str(plot_script), '--config', str(config_path), '--extractor', cfg_feature_extractor], check=False)
             print('Plot generation finished (if plot.py succeeded).')

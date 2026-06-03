@@ -4,9 +4,9 @@ import yaml
 import torch
 import pandas as pd
 from torchvision import transforms
-from src.model.prediction.model import MultiBackBoneRegressor
-from src.model.feature.extract import FeatureCacheManager
-from src.data.dataset import build_dataframe
+from model.prediction.model import MultiBackBoneRegressor
+#from src.model.feature.extract import FeatureCacheManager
+from data.dataset import build_dataframe
 from torch.utils.data import DataLoader, Dataset
 import os
 from PIL import Image
