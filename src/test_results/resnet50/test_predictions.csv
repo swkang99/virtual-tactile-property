@@ -1,0 +1,16 @@
+id,target,prediction,absolute_error,squared_error,texture_path
+5,-35.92900085449219,-11.3125,24.616500854492188,605.9721143192146,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/5.jpg
+55,-9.87660026550293,-3.087890625,6.78870964050293,46.08657858305742,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/55.jpg
+76,1.2969000339508057,-17.46875,18.765650033950806,352.1496211967179,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/76.jpg
+12,-40.26900100708008,-24.53125,15.737751007080078,247.67680676085,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/12.JPG
+70,-9.28279972076416,-3.2578125,6.02498722076416,36.30047101037144,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/70.jpg
+87,18.729000091552734,0.111328125,18.617671966552734,346.61770945416356,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/87.jpg
+14,-42.755001068115234,-29.359375,13.395626068115234,179.4427977567684,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/14.jpg
+18,-41.862998962402344,-29.046875,12.816123962402344,164.25303341966355,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/18.jpg
+29,-26.827999114990234,-14.1484375,12.679561614990234,160.77128274833376,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/29.jpg
+32,4.437099933624268,-19.796875,24.233974933624268,587.2855410835293,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/32.jpg
+36,-38.93000030517578,-10.8984375,28.03156280517578,785.7685133005143,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/36.JPG
+95,38.7239990234375,0.79931640625,37.9246826171875,1438.2815516144037,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/95.jpg
+4,-3.163300037384033,-1.869140625,1.2941594123840332,1.6748485846621861,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/4.jpg
+15,-44.35599899291992,-16.640625,27.715373992919922,768.141955567422,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/15.jpg
+82,35.409000396728516,-7.56640625,42.975406646728516,1846.8855764516775,/home/cglab/Desktop/dev/virtual-tactile-property/src/data/MOESM/test/MOESM1/82.JPG
