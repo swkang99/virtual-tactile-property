@@ -114,18 +114,13 @@ def process_texture(texture_path, output_dir="output_maps", blur_ksize=5, streng
 
     height_path = output_dir / f"{int(texture_path.stem)}_height_map_gray.png"
     normal_path = output_dir / f"{int(texture_path.stem)}_normal_map_rgb.png"
-
-    '''
+    
     # 없을 때만 저장
     if not height_path.exists():
         save_grayscale_image(height_map, height_path)
 
     if not normal_path.exists():
         save_rgb_image(normal_map_rgb, normal_path)
-    '''
-
-    save_grayscale_image(height_map, height_path)
-    save_rgb_image(normal_map_rgb, normal_path)
 
     return str(height_path), str(normal_path)
 
