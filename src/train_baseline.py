@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 from torchvision import transforms, models
-from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
+from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 import pandas as pd
 import yaml
 import time
@@ -68,7 +68,7 @@ class FeatureDataset(Dataset):
 def extract_single_image_features(img_path, transform, resnet50, device):
     texture_img = Image.open(img_path).convert('L') # mode L: Grayscale
     texture_img_np = np.array(texture_img)
-    texture_img_resized = resize(texture_img_np, (1568, 1568), preserve_range=False, anti_aliasing=False)
+    texture_img_resized = resize(texture_img_np, (1568, 1568), preserve_range=False, anti_aliasing=True)
     
     glcm_start = time.perf_counter()
     glcm_feat = extract_glcm_features(texture_img_resized)
@@ -102,9 +102,7 @@ def build_all_features(full_df, transform, resnet50, device):
         
         # height_img = Image.open(row['height_path']).convert('L')
         # normal_img = Image.open(row['normal_path']).convert('RGB')
-        
-        # gt = float(row['roughness']) # Use roughness only
-        gt = row['haptic_attribute']
+        gt = float(row['roughness'])
  
         texture_feat, texture_glcm_time, texture_lbp_time, texture_resnet_time = extract_single_image_features(row['texture_path'], transform, resnet50, device)
         # normal_feat, normal_glcm_time, normal_lbp_time, normal_resnet_time  = extract_single_image_features(normal_img, transform, resnet50, device)
@@ -129,7 +127,7 @@ def build_all_features(full_df, transform, resnet50, device):
 
     return (
         np.stack(all_features),
-        np.array(all_targets, dtype=np.float32).reshape(len(all_targets), -1),
+        np.array(all_targets, dtype=np.float32),
         image_ids,
         np.array(glcm_times),
         np.array(lbp_times),
@@ -152,9 +150,7 @@ def train_one_fold(model, train_features, train_targets, device, epochs=200, bat
             y = y.to(device)
 
             optimizer.zero_grad()
-            pred = model(x)
-            if pred.dim() > y.dim():
-                pred = pred.squeeze(-1)
+            pred = model(x).squeeze(-1)
             loss = criterion(pred, y)
             loss.backward()
             optimizer.step()
@@ -194,7 +190,7 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
         resnet_times,
     ) = build_all_features(full_df, transform, resnet50, device)
 
-    train_type = 'baseline_train_loocv_4HA'
+    train_type = 'baseline_train_loocv'
     results_dir = Path(f'experiments/runs/{train_type}')
     results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -222,8 +218,8 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
         y_train_raw = all_targets[train_mask]
         y_test_raw  = all_targets[test_idx:test_idx+1]
 
-        y_min = y_train_raw.min(axis=0)
-        y_max = y_train_raw.max(axis=0)
+        y_min = y_train_raw.min()
+        y_max = y_train_raw.max()
 
         y_train = (y_train_raw - y_min) / (y_max - y_min + 1e-8)
         y_test = (y_test_raw - y_min) / (y_max - y_min + 1e-8)
@@ -247,14 +243,14 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
         infer_start = time.perf_counter()
         with torch.no_grad():
             x_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-            pred_norm = model(x_test_tensor).cpu().numpy()
+            pred_norm = model(x_test_tensor).cpu().numpy().flatten()[0]
         infer_time = time.perf_counter() - infer_start
-        pred_raw = pred_norm[0] * (y_max - y_min + 1e-8) + y_min
-        y_test_raw_val = y_test_raw[0]
+        pred_raw = pred_norm * (y_max - y_min + 1e-8) + y_min
+        y_test_raw = y_test_raw[0]
         fold_time = time.perf_counter() - fold_start
 
         predictions.append(pred_raw)
-        ground_truths.append(y_test_raw_val)
+        ground_truths.append(y_test_raw)
         test_image_ids.append(image_ids[test_idx])
 
         train_times.append(train_time)
@@ -270,16 +266,7 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
 
     mae = mean_absolute_error(ground_truths, predictions)
     rmse = root_mean_squared_error(ground_truths, predictions)
-
-    # Per-output metrics (for each target dimension)
-    # `mean_absolute_error` and `mean_squared_error` support multioutput; use raw_values to get per-target results
-    try:
-        mae_per_output = mean_absolute_error(ground_truths, predictions, multioutput='raw_values')
-        rmse_per_output = mean_squared_error(ground_truths, predictions, squared=False, multioutput='raw_values')
-    except Exception:
-        # Fallback to manual computation if shapes or sklearn behavior differ
-        mae_per_output = np.mean(np.abs(ground_truths - predictions), axis=0)
-        rmse_per_output = np.sqrt(np.mean((ground_truths - predictions) ** 2, axis=0))
+    r2 = r2_score(ground_truths, predictions)
 
     cnn_1d = MultiScale1DCNN(input_feature_dim=input_feature_dim)
     resnet50_params = count_model_parameters(resnet50)
@@ -289,17 +276,10 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
     cnn_1d_flops = estimate_1dcnn_flops(input_feature_dim)
     total_flops = count_flops_approximate(texture_size=448, cnn_1d_ops=cnn_1d_flops)
 
-    # Name mapping for each output dimension
-    per_output_names = ['roughness', 'bumpyness', 'stickyness', 'hardness']
-
-    per_output_dict = {}
-    for name, m, r in zip(per_output_names, mae_per_output, rmse_per_output):
-        per_output_dict[name] = {'mae': float(m), 'rmse': float(r)}
-
     metrics = {
         'mae': float(mae),
         'rmse': float(rmse),
-        'per_output': per_output_dict,
+        'r2': float(r2),
         'timing': {
             'feature_extraction_ms': {
                 'glcm_avg': float(glcm_times.mean() * 1000),
@@ -331,24 +311,15 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
         }
     }
 
-    # Expand per-output metrics into separate columns
-    per_output_names = ['roughness', 'bumpyness', 'stickyness', 'hardness']
-    df_data = {
+    results_df = pd.DataFrame({
         'image_id': test_image_ids,
-    }
-    
-    # Add per-output ground_truth and prediction columns
-    for i, name in enumerate(per_output_names):
-        df_data[f'ground_truth_{name}'] = ground_truths[:, i]
-        df_data[f'prediction_{name}'] = predictions[:, i]
-        df_data[f'abs_error_{name}'] = np.abs(ground_truths[:, i] - predictions[:, i])
-    
-    # Add timing columns
-    df_data['train_time_sec'] = train_times
-    df_data['infer_time_sec'] = infer_times
-    df_data['fold_total_time_sec'] = total_fold_times
-    
-    results_df = pd.DataFrame(df_data)
+        'ground_truth': ground_truths,
+        'prediction': predictions,
+        'abs_error': np.abs(ground_truths - predictions),
+        'train_time_sec': train_times,
+        'infer_time_sec': infer_times,
+        'fold_total_time_sec': total_fold_times,
+    })
 
     results_csv = results_dir / f'{train_type}_results.csv'
     metrics_json = results_dir / f'{train_type}_metrics.json'
@@ -360,6 +331,7 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
     print(f"\n=== Baseline Model LOOCV Training Results ===")
     print(f"MAE: {mae:.4f}")
     print(f"RMSE: {rmse:.4f}")
+    print(f"R²: {r2:.4f}")
     print(f"Train time per fold (avg): {train_times.mean()*1000:.3f} ± {train_times.std()*1000:.3f} ms")
     print(f"Inference time per fold (avg): {infer_times.mean()*1000:.3f} ± {infer_times.std()*1000:.3f} ms")
     print(f"Total fold time (avg): {total_fold_times.mean()*1000:.3f} ± {total_fold_times.std()*1000:.3f} ms")
@@ -368,14 +340,6 @@ def baseline_loocv_train(force_cpu=False, epochs=200, batch_size=8, lr=1e-3, wei
     print(f"\nResults saved to {results_dir}")
     print(f"  - CSV: {results_csv}")
     print(f"  - Metrics: {metrics_json}")
-
-    # Print per-output MAE and RMSE for each named target
-    try:
-        for name, m, r in zip(per_output_names, mae_per_output, rmse_per_output):
-            print(f"{name} MAE: {m:.4f} | RMSE: {r:.4f}")
-    except Exception:
-        print("Per-output MAE:", mae_per_output)
-        print("Per-output RMSE:", rmse_per_output)
 
 
 def main():
