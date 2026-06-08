@@ -2,37 +2,10 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
-from torchvision.transforms import InterpolationMode
-
+from src.model.feature.cnn_1d_4ha import FeatureExtractor
 from PIL import Image
 
-class OriginalDataset(Dataset):
-    def __init__(self, df):
-        self.df = df.reset_index(drop=True)
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-        ])
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        img_path = self.df.loc[idx, "image_path"]
-        label = self.df.loc[idx, "label"]
-
-        image = Image.open(img_path).convert("RGB")
-
-        if self.transform is not None:
-            image = self.transform(image)
-
-        return image, label
-
-def load_original_dataset(df):
-    return OriginalDataset(df)
-
-
-class CNN1DDataset(Dataset):
+class OriginalDataset(Dataset): 
     def __init__(self, df, conf, target_col, y_min, y_max):
         self.df = df.reset_index(drop=True).copy()
         self.conf = conf
@@ -41,10 +14,7 @@ class CNN1DDataset(Dataset):
         self.y_max = np.asarray(y_max, dtype=np.float32)
 
         self.transform = transforms.Compose([
-            transforms.Resize(
-                (1568, 1568), 
-                interpolation=InterpolationMode.BICUBIC,
-                antialias=True),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
         ])
 
@@ -67,7 +37,7 @@ class CNN1DDataset(Dataset):
             normal_map = Image.open(normal_path).convert("L")
             normal_map = self.transform(normal_map)
         
-        if self.target_col == "haptic_attribute":
+        if self.target_col == "haptic_attribute": # (4,)
             label = np.array(row[self.target_col], dtype=np.float32)
         elif self.target_col == "roughness":
             label = np.array([row[self.target_col]], dtype=np.float32) # (1,)
@@ -78,6 +48,21 @@ class CNN1DDataset(Dataset):
             return texture_image, height_map, normal_map,  torch.tensor(label, dtype=torch.float32)    
         elif self.conf['dataset_input'] == 'texture_image':
             return texture_image, torch.tensor(label, dtype=torch.float32)
+        
+def load_original_dataset(df, conf, target_col, y_min, y_max):
+    return OriginalDataset(df, conf, target_col, y_min, y_max)
 
+class FeatureDataset(Dataset):
+    def __init__(self, features, targets):
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.targets = torch.tensor(targets, dtype=torch.float32)
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, idx):
+        return self.features[idx], self.targets[idx]
+    
 def load_cnn_1d_dataset(df, conf, target_col, y_min, y_max):
-    return CNN1DDataset(df, conf, target_col, y_min, y_max)
+    features, targets = FeatureExtractor.precompute_features_and_targets(df, conf, target_col, y_min, y_max)
+    return FeatureDataset(features, targets)
