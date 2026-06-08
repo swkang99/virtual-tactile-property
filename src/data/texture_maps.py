@@ -6,7 +6,8 @@ from PIL import Image
 import cv2
 import numpy as np
 
-conf = yaml.safe_load('config.yaml')
+with open('config.yaml', 'r', encoding='utf-8') as f:
+    conf = yaml.safe_load(f)
 
 def load_grayscale_image(path):
     img = Image.open(path).convert('L')

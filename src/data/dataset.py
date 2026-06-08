@@ -1,63 +1,83 @@
-import os
-import yaml
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 
-import pandas as pd
-from pathlib import Path
+from PIL import Image
 
-from src.data.texture_maps import process_texture
+class OriginalDataset(Dataset):
+    def __init__(self, df):
+        self.df = df.reset_index(drop=True)
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+        ])
 
-conf = yaml.safe_load('config.yaml')
-    
-def _load_roughness_labels(csv_path):
-    if not os.path.exists(csv_path):
-        return {}
+    def __len__(self):
+        return len(self.df)
 
-    labels_df = pd.read_csv(csv_path, header=None)
-    ha_list = {str(i + 1): [v + 50 if isinstance(v, (int, float)) else v for v in labels_df.iloc[i].tolist()] for i in range(len(labels_df))}
-    return ha_list
+    def __getitem__(self, idx):
+        img_path = self.df.loc[idx, "image_path"]
+        label = self.df.loc[idx, "label"]
 
-def build_dataframe_from_file():
-    base_path = conf['data_base_path']
-    image_path = conf['data_image_path']
-    label_path = conf['data_label_path']
+        image = Image.open(img_path).convert("RGB")
 
-    texture_path =Path(base_path / image_path)
-    csv_path = Path(base_path / label_path)
+        if self.transform is not None:
+            image = self.transform(image)
 
-    label_map = _load_roughness_labels(csv_path)
+        return image, label
 
-    texture_files = [
-        p for p in texture_path.iterdir()
-        if p.suffix.lower() in {'.png', '.jpg'}
-    ]
-    texture_files = sorted(texture_files, key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem)
+def load_original_dataset(df):
+    return OriginalDataset(df)
 
-    rows = []
-    for tex_path in texture_files:
-        sid = tex_path.stem
-        height_dir, normal_dir = process_texture(tex_path)
+
+class CNN1DDataset(Dataset):
+    def __init__(self, df, conf, target_col, y_min, y_max):
+        self.df = df.reset_index(drop=True).copy()
+        self.conf = conf
+        self.target_col = target_col
+        self.y_min = np.asarray(y_min, dtype=np.float32)
+        self.y_max = np.asarray(y_max, dtype=np.float32)
+
+        self.transform = transforms.Compose([
+            transforms.Resize(
+                (1568, 1568), 
+                interpolation=InterpolationMode.BICUBIC,
+                antialias=True),
+            transforms.ToTensor(),
+        ])
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        row = self.df.loc[idx]
+
+        texture_path = row["texture_path"]
+        texture_image = Image.open(texture_path).convert("L")
+        texture_image = self.transform(texture_image)
+
+        if self.conf['dataset_input'] == 'texture_maps':
+            height_path = row["height_path"]
+            height_map = Image.open(height_path).convert("L")
+            height_map = self.transform(height_map)
+
+            normal_path = row["normal_path"]
+            normal_map = Image.open(normal_path).convert("L")
+            normal_map = self.transform(normal_map)
         
-        haptic_attribute_list = label_map.get(sid)
+        if self.target_col == "haptic_attribute":
+            label = np.array(row[self.target_col], dtype=np.float32)
+        elif self.target_col == "roughness":
+            label = np.array([row[self.target_col]], dtype=np.float32) # (1,)
 
-        row = {
-            'texture_path': str(tex_path),
-        }
+        label = (label - self.y_min) / (self.y_max - self.y_min + 1e-8)
 
-        if conf['dataset_input'] == 'texture_maps':
-            row.update({
-                'normal_path': normal_dir,
-                'height_path': height_dir,
-            })
-        elif conf['dataset_input'] != 'texture_image':
-            raise ValueError(f"Unsupported dataset_input: {conf['dataset_input']}")
+        if self.conf['dataset_input'] == 'texture_maps':
+            return texture_image, height_map, normal_map,  torch.tensor(label, dtype=torch.float32)    
+        elif self.conf['dataset_input'] == 'texture_image':
+            return texture_image, torch.tensor(label, dtype=torch.float32)
 
-        if conf['dataset_output'] == 'four_HAs':
-            row['haptic_attribute'] = haptic_attribute_list
-        elif conf['dataset_output'] == 'roughness':
-            row['roughness'] = float(haptic_attribute_list[0])
-        else:
-            raise ValueError(f"Unsupported dataset_output: {conf['dataset_output']}")
-
-        rows.append(row)
-
-    return pd.DataFrame(rows)
+def load_cnn_1d_dataset(df, conf, target_col, y_min, y_max):
+    return CNN1DDataset(df, conf, target_col, y_min, y_max)
