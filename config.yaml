@@ -46,4 +46,4 @@ dataset_output: roughness
 #   4. cnn_1d_scirep: 1D-CNN (Taye et al.)
 #   5. cnn_1d_4ha   : 1D-CNN (Hassan et al.)
 #   6. transformer  : Proposed Transformer Regressor 
-model: transformer
+model: cnn_1d_4ha

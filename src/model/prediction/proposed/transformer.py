@@ -71,7 +71,7 @@ class TransformerRegressor(nn.Module):
             dropout=dropout,
             activation="gelu",
             batch_first=True,
-            norm_first=True,
+            norm_first=False,
         )
 
         self.transformer = nn.TransformerEncoder(

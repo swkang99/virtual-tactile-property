@@ -14,8 +14,9 @@ def train_one_fold(model, dataset, device, epochs=200, batch_size=8, lr=1e-3, we
     for epoch in tqdm(range(epochs), desc="Train One Fold"):
         epoch_losses = []
         for batch in train_loader:
-            
-            *inputs, y = batch        
+            *inputs, y = batch    
+            inputs = [x.to(device) for x in inputs]
+            y = y.to(device)    
 
             if len(inputs) == 1:
                 x = inputs[0]
@@ -48,12 +49,14 @@ def evaluate_one_fold(model, dataset, device, y_min, y_max, batch_size=1):
     with torch.no_grad():
         for batch in test_loader:
             *inputs, y = batch
+            inputs = [x.to(device) for x in inputs]
+            y = y.to(device)
 
             if len(inputs) == 1:
                 x = inputs[0]
                 pred_norm = model(x)
             else:
-                pred_norm = model(*input)
+                pred_norm = model(*inputs)
                 
             if pred_norm.dim() > y.dim():
                 pred_norm = pred_norm.squeeze(-1)

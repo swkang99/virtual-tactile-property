@@ -16,7 +16,8 @@ def build_feature_base_dataset(conf, full_df, target_col, device):
     full_features, full_targets = feature_extractor.precompute_features_and_targets(
         full_df, conf, target_col
     )
-    return FeatureDataset(full_features, full_targets), full_targets
+    input_dim = full_features.shape[1]
+    return FeatureDataset(full_features, full_targets), full_targets, input_dim
 
 def build_original_base_dataset(conf, full_df, target_col, device):
     base_dataset = OriginalDataset(full_df, conf, target_col)
@@ -26,7 +27,7 @@ def build_original_base_dataset(conf, full_df, target_col, device):
     else:
         full_targets = full_df[target_col].to_numpy(dtype=np.float32).reshape(-1, 1)
 
-    return base_dataset, full_targets
+    return base_dataset, full_targets, None
 
 def build_base_dataset(conf, full_df, target_col, device):
     dataset_type = MODEL_DATASET_TYPE[conf["model"]]
