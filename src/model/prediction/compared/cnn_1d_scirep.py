@@ -9,7 +9,7 @@ import torch.nn as nn
 
 
 class CNN1DScirep(nn.Module):
-    def __init__(self, n_features):
+    def __init__(self, conf, feature_dim):
         super().__init__()
 
         self.features = nn.Sequential(
@@ -37,7 +37,7 @@ class CNN1DScirep(nn.Module):
         self.flatten = nn.Flatten()
 
         with torch.no_grad():
-            dummy = torch.zeros(1, 1, n_features)
+            dummy = torch.zeros(1, 1, feature_dim)
             flat_dim = self.features(dummy).flatten(1).shape[1]
 
         self.regressor = nn.Sequential(

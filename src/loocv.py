@@ -27,7 +27,7 @@ def loocv(conf, model_builder):
         else "roughness"
     )
 
-    base_dataset, full_targets = build_base_dataset(conf, full_df, target_col, device)
+    base_dataset, full_targets, input_dim = build_base_dataset(conf, full_df, target_col, device)
 
     predictions = []
     ground_truths = []
@@ -45,8 +45,11 @@ def loocv(conf, model_builder):
 
         train_dataset = NormalizedSubset(base_dataset, train_indices, y_min, y_max)
         test_dataset  = NormalizedSubset(base_dataset, test_indices, y_min, y_max)
-    
-        model = model_builder(conf, input_dim=None, device=device)
+
+        if input_dim is None:
+            model = model_builder(conf, input_dim=None, device=device)
+        else: 
+            model = model_builder(conf, input_dim=input_dim, device=device)
 
         model = train_one_fold(
             model=model,
@@ -71,7 +74,9 @@ def loocv(conf, model_builder):
         test_image_ids.append(full_df.loc[test_idx, "texture_path"])
 
     predictions = np.array(predictions, dtype=np.float32)
+    predictions = predictions.reshape(predictions.shape[0], -1)
     ground_truths = np.array(ground_truths, dtype=np.float32)
+    ground_truths = ground_truths.reshape(ground_truths.shape[0], -1)
 
     mae_per_output = mean_absolute_error(ground_truths, predictions, multioutput='raw_values')
     rmse_per_output = np.sqrt(np.mean((ground_truths - predictions) ** 2, axis=0))

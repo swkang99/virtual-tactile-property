@@ -10,15 +10,10 @@ import torch.nn.functional as F
 
 
 class CNN1D4HA(nn.Module):
-    def __init__(self, conf):
+    def __init__(self, conf, feature_dim):
         super(CNN1D4HA, self).__init__()
 
-        if conf['dataset_input'] == 'texture_image':
-            input_feature_dim = 3955
-        elif conf['dataset_input'] == 'texture_maps':
-            input_feature_dim = 3955 * 3
-
-        seq_len_after_pools = max(1, input_feature_dim // 4)
+        seq_len_after_pools = max(1, feature_dim // 4)
 
         # =========================
         # Narrow path (kernel=3)
