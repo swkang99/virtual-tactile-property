@@ -1,0 +1,15 @@
+{
+  "per_output": {
+    "roughness": {
+      "mae": 37.98198318481445,
+      "rmse": 51.98110580444336
+    }
+  },
+  "num_samples": 100,
+  "train_hparams": {
+    "epochs": 10,
+    "batch_size": 32,
+    "lr": 0.001,
+    "weight_decay": 0.0001
+  }
+}
