@@ -68,6 +68,9 @@ def process_texture(texture_path, output_dir="output_maps", blur_ksize=5, streng
     output_dir = texture_path.parent.parent / output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    height_path = output_dir / f"{int(texture_path.stem)}_height_map_gray.png"
+    normal_path = output_dir / f"{int(texture_path.stem)}_normal_map_rgb.png"
+
     if conf['save_texture_maps']:
         gray_img = load_grayscale_image(texture_path)
 
@@ -83,12 +86,9 @@ def process_texture(texture_path, output_dir="output_maps", blur_ksize=5, streng
             strength=strength,
             invert_y=invert_y
         )
-        
+
         save_grayscale_image(height_map, height_path)
         save_rgb_image(normal_map_rgb, normal_path)
-
-    height_path = output_dir / f"{int(texture_path.stem)}_height_map_gray.png"
-    normal_path = output_dir / f"{int(texture_path.stem)}_normal_map_rgb.png"
 
     return str(height_path), str(normal_path)
 

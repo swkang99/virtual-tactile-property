@@ -3,7 +3,8 @@ from src.model.prediction.compared.cnn_1d_scirep import CNN1DScirep
 # from src.model.prediction.compared.ann import ANN
 # from src.model.prediction.compared.lr import LinearRegressor
 # from src.model.prediction.compared.svr import SVRModel
-from src.model.prediction.proposed.transformer import TransformerRegressor
+#from src.model.prediction.proposed.transformer import TransformerRegressor
+from src.model.prediction.proposed.transformer_260618 import TransformerRegressor
 
 MODEL_REGISTRY = {
     # "lr": lambda conf, input_dim, device: LinearRegressor(conf),
