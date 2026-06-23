@@ -1,5 +1,4 @@
 # Implementation of proposed generic 1d CNN
-import torch
 import torch.nn as nn
 
 class CNN1DGeneric(nn.Module):
