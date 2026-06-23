@@ -1,6 +1,7 @@
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 from PIL import Image
@@ -58,6 +59,19 @@ class FeatureDataset(Dataset):
     def __getitem__(self, idx):
         return self.features[idx], self.targets[idx]
 
+class SeparatedDataset(Dataset):
+    def __init__(self, texture_feats, height_feats, normal_feats, targets):
+        self.texture_feats = torch.tensor(texture_feats, dtype=torch.float32)
+        self.height_feats = torch.tensor(height_feats, dtype=torch.float32)
+        self.normal_feats = torch.tensor(normal_feats, dtype=torch.float32)
+        self.targets = torch.tensor(targets, dtype=torch.float32) # raw target
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, idx):
+        return (self.texture_feats[idx], self.height_feats[idx], self.normal_feats[idx], self.targets[idx])
+
 class NormalizedSubset(Dataset):
     def __init__(self, base_dataset, indices, y_min, y_max):
         self.base_dataset = base_dataset
@@ -81,3 +95,41 @@ class NormalizedSubset(Dataset):
         if len(features) == 1:
             return features[0], target
         return (*features, target)
+
+def dataset_to_numpy(dataset):
+    loader = DataLoader(
+        dataset,
+        batch_size=len(dataset),
+        shuffle=False,
+        drop_last=False
+    )
+
+    batch = next(iter(loader))
+
+    # FeatureDataset: (x, y)
+    if len(batch) == 2:
+        x, y = batch
+        X = x.detach().cpu().numpy()
+        y = y.detach().cpu().numpy()
+
+    # SeparatedDataset: (texture, height, normal, y)
+    elif len(batch) == 4:
+        texture, height, normal, y = batch
+
+        texture = texture.detach().cpu().numpy()
+        height = height.detach().cpu().numpy()
+        normal = normal.detach().cpu().numpy()
+        y = y.detach().cpu().numpy()
+
+        X = np.concatenate([texture, height, normal], axis=1)
+
+    else:
+        raise ValueError(f"Unsupported batch format with length {len(batch)}")
+
+    if X.ndim > 2:
+        X = X.reshape(X.shape[0], -1)
+
+    if y.ndim == 2 and y.shape[1] == 1:
+        y = y.reshape(-1)
+
+    return X, y
